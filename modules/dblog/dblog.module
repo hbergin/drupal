@@ -99,7 +99,6 @@ function dblog_init() {
  *
  * Remove expired log messages and flood control events.
  */
- 
 function dblog_cron() {
   // Cleanup the watchdog table.
   $row_limit = variable_get('dblog_row_limit', 1000);
