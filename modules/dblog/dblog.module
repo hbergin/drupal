@@ -107,17 +107,14 @@ function dblog_cron() {
   // Counting the most recent n rows avoids issues with wid number sequences,
   // e.g. auto_increment value > 1 or rows deleted directly from the table.
   if ($row_limit > 0) {
-    $min_row = db_select('watchdog', 'w')
-      ->fields('w', array('wid'))
-      ->orderBy('wid', 'DESC')
-      ->range($row_limit - 1, 1)
-      ->execute()->fetchField();
+    $query = 'SELECT wid FROM {watchdog} ORDER BY wid DESC';
+    $min_row = db_query_range($query, $row_limit-1, 1)->fetchField();
 
     // Delete all table entries older than the nth row, if nth row was found.
     if ($min_row) {
-      db_delete('watchdog')
-        ->condition('wid', $min_row, '<')
-        ->execute();
+      Database::getConnection('default', 'default')->delete('watchdog')
+      ->condition('wid', $min_row, '<')
+      ->execute();
     }
   }
 }
