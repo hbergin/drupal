@@ -114,7 +114,7 @@ class DBLogTestCase extends DrupalWebTestCase {
     $count = db_query('SELECT COUNT(wid) FROM {watchdog}')->fetchField();
     $this->assertTrue($count == 1, t('Dblog row count of :count equals an empty table plus one', array(':count' => $count)));
 
-    // Verify Cron when some dblog rows have been deleted out wid order.
+    // Verify Cron when some dblog rows have been deleted out of wid order.
     // Generate 3 sets of log entries, each set equal to row limit.
     // Create delimiting markers between the sets using the wid field.
     db_query('DELETE FROM {watchdog}');
