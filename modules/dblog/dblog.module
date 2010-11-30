@@ -113,8 +113,8 @@ function dblog_cron() {
     // Delete all table entries older than the nth row, if nth row was found.
     if ($min_row) {
       Database::getConnection('default', 'default')->delete('watchdog')
-      ->condition('wid', $min_row, '<')
-      ->execute();
+        ->condition('wid', $min_row, '<')
+        ->execute();
     }
   }
 }
