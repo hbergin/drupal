@@ -115,19 +115,19 @@ class DBLogTestCase extends DrupalWebTestCase {
     $this->assertTrue($count == 1, t('Dblog row count of :count equals an empty table plus one', array(':count' => $count)));
 
     // Verify Cron when some dblog rows have been deleted out of wid order.
-    // Generate 3 sets of log entries, each set equal to row limit.
-    // Create delimiting markers between the sets using the wid field.
+    // Generate two sets of log entries and get the max wid for each as markers.
+    // This ensures the test works when auto increment values are > 1.
     db_query('DELETE FROM {watchdog}');
     $this->generateLogEntries($row_limit);
-    $marker1 = db_query('SELECT MAX(wid) FROM {watchdog}')->fetchField();
+    $min_marker = db_query('SELECT MAX(wid) FROM {watchdog}')->fetchField();
     $this->generateLogEntries($row_limit);
-    $marker2 = db_query('SELECT MAX(wid) FROM {watchdog}')->fetchField();
-    $this->generateLogEntries($row_limit);
-    // Delete the middle set.
-    db_query('DELETE FROM {watchdog} WHERE wid > :marker1 AND wid <= :marker2', array(':marker1' => $marker1, ':marker2' => $marker2));
-    // Verify dblog row count equals twice the row limit (2 remaining sets).
+    $max_marker = db_query('SELECT MAX(wid) FROM {watchdog}')->fetchField();
+    // Delete rows from within the second set, using a mid marker.
+    $mid_marker = $min_marker + round(($max_marker - $min_marker)/2);
+    db_query('DELETE FROM {watchdog} WHERE wid > :min_marker AND wid <= :mid_marker', array(':min_marker' => $min_marker, ':mid_marker' => $mid_marker));
+    // Verify dblog row count exceeds row limit.
     $count = db_query('SELECT COUNT(wid) FROM {watchdog}')->fetchField();
-    $this->assertTrue($count == $row_limit * 2, t('Dblog row count of :count is twice the row limit of :limit', array(':count' => $count, ':limit' => $row_limit)));
+    $this->assertTrue($count > $row_limit, t('Dblog row count of :count exceeds row limit of :limit', array(':count' => $count, ':limit' => $row_limit)));
     // Run cron job.
     $this->cronRun();
     // Verify dblog row count equals row limit plus one.
