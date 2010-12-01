@@ -67,17 +67,72 @@ class DBLogTestCase extends DrupalWebTestCase {
    * @param integer $count Log row limit.
    */
   private function verifyCron($row_limit) {
-    // Generate additional log entries.
+    // Verify Cron when dblog row count exceeds row limit.
     $this->generateLogEntries($row_limit + 10);
     // Verify dblog row count exceeds row limit.
     $count = db_query('SELECT COUNT(wid) FROM {watchdog}')->fetchField();
-    $this->assertTrue($count > $row_limit, t('Dblog row count of @count exceeds row limit of @limit', array('@count' => $count, '@limit' => $row_limit)));
-
+    $this->assertTrue($count > $row_limit, t('Dblog row count of :count exceeds row limit of :limit', array(':count' => $count, ':limit' => $row_limit)));
     // Run cron job.
     $this->cronRun();
     // Verify dblog row count equals row limit plus one because cron adds a record after it runs.
     $count = db_query('SELECT COUNT(wid) FROM {watchdog}')->fetchField();
-    $this->assertTrue($count == $row_limit + 1, t('Dblog row count of @count equals row limit of @limit plus one', array('@count' => $count, '@limit' => $row_limit)));
+    $this->assertTrue($count == $row_limit + 1, t('Dblog row count of :count equals row limit of :limit plus one', array(':count' => $count, ':limit' => $row_limit)));
+
+    // Verify Cron when dblog row count is equal to the row limit.
+    db_query('DELETE FROM {watchdog}');
+    $this->generateLogEntries($row_limit);
+    // Verify dblog row count is equal to row limit.
+    $count = db_query('SELECT COUNT(wid) FROM {watchdog}')->fetchField();
+    $this->assertTrue($count == $row_limit, t('Dblog row count of :count is equal to row limit of :limit', array(':count' => $count, ':limit' => $row_limit)));
+    // Run cron job.
+    $this->cronRun();
+    // Verify dblog row count equals row limit plus one.
+    $count = db_query('SELECT COUNT(wid) FROM {watchdog}')->fetchField();
+    $this->assertTrue($count == $row_limit + 1, t('Dblog row count of :count equals row limit of :limit plus one', array(':count' => $count, ':limit' => $row_limit)));
+
+    // Verify Cron when dblog row count is less than the row limit.
+    $decrease = 10;
+    db_query('DELETE FROM {watchdog}');
+    $this->generateLogEntries($row_limit - $decrease);
+    // Verify dblog row count is less than row limit.
+    $count = db_query('SELECT COUNT(wid) FROM {watchdog}')->fetchField();
+    $this->assertTrue($count == $row_limit - $decrease, t('Dblog row count of :count is :decrease less than row limit of :limit', array(':count' => $count, ':limit' => $row_limit, ':decrease' => $decrease)));
+    // Run cron job.
+    $this->cronRun();
+    // Verify dblog row count is the same plus one.
+    $count = db_query('SELECT COUNT(wid) FROM {watchdog}')->fetchField();
+    $this->assertTrue($count == ($row_limit - $decrease) + 1, t('Dblog row count of :count is :decrease less than row limit of :limit plus one', array(':count' => $count, ':limit' => $row_limit, ':decrease' => $decrease)));
+
+    // Verify Cron runs when dblog row count is zero, e.g. table is truncated.
+    db_query('DELETE FROM {watchdog}');
+    // Verify dblog row count is zero.
+    $count = db_query('SELECT COUNT(wid) FROM {watchdog}')->fetchField();
+    $this->assertTrue($count == 0, t('Dblog row count of :count equals an empty table', array(':count' => $count)));
+    // Run cron job.
+    $this->cronRun();
+    // Verify dblog row count equals 0 plus one.
+    $count = db_query('SELECT COUNT(wid) FROM {watchdog}')->fetchField();
+    $this->assertTrue($count == 1, t('Dblog row count of :count equals an empty table plus one', array(':count' => $count)));
+
+    // Verify Cron when some dblog rows have been deleted out of wid order.
+    // Generate two sets of log entries and get the max wid for each as markers.
+    // This ensures the test works when auto increment values are > 1.
+    db_query('DELETE FROM {watchdog}');
+    $this->generateLogEntries($row_limit);
+    $min_marker = db_query('SELECT MAX(wid) FROM {watchdog}')->fetchField();
+    $this->generateLogEntries($row_limit);
+    $max_marker = db_query('SELECT MAX(wid) FROM {watchdog}')->fetchField();
+    // Delete rows from within the second set, using a mid marker.
+    $mid_marker = $min_marker + round(($max_marker - $min_marker)/2);
+    db_query('DELETE FROM {watchdog} WHERE wid > :min_marker AND wid <= :mid_marker', array(':min_marker' => $min_marker, ':mid_marker' => $mid_marker));
+    // Verify dblog row count exceeds row limit.
+    $count = db_query('SELECT COUNT(wid) FROM {watchdog}')->fetchField();
+    $this->assertTrue($count > $row_limit, t('Dblog row count of :count exceeds row limit of :limit', array(':count' => $count, ':limit' => $row_limit)));
+    // Run cron job.
+    $this->cronRun();
+    // Verify dblog row count equals row limit plus one.
+    $count = db_query('SELECT COUNT(wid) FROM {watchdog}')->fetchField();
+    $this->assertTrue($count == $row_limit + 1, t('Dblog row count of :count equals row limit of :limit plus one', array(':count' => $count, ':limit' => $row_limit)));
   }
 
   /**
