@@ -1,5 +1,5 @@
 <?php
-// $Id: update.manager.inc,v 1.26 2010/11/20 09:40:34 webchick Exp $
+// $Id: update.manager.inc,v 1.28 2010/12/01 07:02:14 webchick Exp $
 
 /**
  * @file
@@ -425,7 +425,7 @@ function update_manager_update_ready_form_submit($form, &$form_state) {
     // credentials and invoke update_authorize_run_update() indirectly with
     // whatever FileTransfer object authorize.php creates for us.
     else {
-      system_authorized_init('update_authorize_run_update', drupal_get_path('module', 'update') . '/update.authorize.inc', array($updates));
+      system_authorized_init('update_authorize_run_update', drupal_get_path('module', 'update') . '/update.authorize.inc', array($updates), t('Update manager'));
       $form_state['redirect'] = system_authorized_get_url();
     }
   }
@@ -602,7 +602,7 @@ function update_manager_install_form_submit($form, &$form_state) {
   // credentials and invoke update_authorize_run_install() indirectly with
   // whatever FileTransfer object authorize.php creates for us.
   else {
-    system_authorized_init('update_authorize_run_install', drupal_get_path('module', 'update') . '/update.authorize.inc', $arguments);
+    system_authorized_init('update_authorize_run_install', drupal_get_path('module', 'update') . '/update.authorize.inc', $arguments, t('Update manager'));
     $form_state['redirect'] = system_authorized_get_url();
   }
 }
@@ -654,6 +654,18 @@ function update_manager_archive_extract($file, $directory) {
   if (!$archiver) {
     throw new Exception(t('Cannot extract %file, not a valid archive.', array ('%file' => $file)));
   }
+
+  // Remove the directory if it exists, otherwise it might contain a mixture of
+  // old files mixed with the new files (e.g. in cases where files were removed
+  // from a later release).
+  $files = $archiver->listContents();
+  // Unfortunately, we can only use the directory name for this. :(
+  $project = drupal_substr($files[0], 0, -1);
+  $extract_location = $directory . '/' . $project;
+  if (file_exists($extract_location)) {
+    file_unmanaged_delete_recursive($extract_location);
+  }
+
   $archiver->extract($directory);
   return $archiver;
 }

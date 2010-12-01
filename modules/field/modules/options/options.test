@@ -1,5 +1,5 @@
 <?php
-// $Id: options.test,v 1.19 2010/11/20 09:17:28 webchick Exp $
+// $Id: options.test,v 1.21 2010/12/01 07:11:38 webchick Exp $
 
 class OptionsWidgetsTestCase extends FieldTestCase {
   public static function getInfo() {

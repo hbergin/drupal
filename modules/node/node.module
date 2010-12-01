@@ -1,5 +1,5 @@
 <?php
-// $Id: node.module,v 1.1327 2010/11/29 04:53:32 webchick Exp $
+// $Id: node.module,v 1.1329 2010/12/01 00:18:15 webchick Exp $
 
 /**
  * @file
@@ -1032,6 +1032,11 @@ function node_save($node) {
   $transaction = db_transaction();
 
   try {
+    // Load the stored entity, if any.
+    if (!empty($node->nid) && !isset($node->original)) {
+      $node->original = entity_load_unchanged('node', $node->nid);
+    }
+
     field_attach_presave('node', $node);
     global $user;
 
@@ -1135,6 +1140,9 @@ function node_save($node) {
 
     // Clear internal properties.
     unset($node->is_new);
+    unset($node->original);
+    // Clear the static loading cache.
+    entity_get_controller('node')->resetCache(array($node->nid));
 
     // Ignore slave server temporarily to give time for the
     // saved node to be propagated to the slave.
@@ -1459,10 +1467,12 @@ function template_preprocess_node(&$variables) {
   // Display post information only on certain node types.
   if (variable_get('node_submitted_' . $node->type, TRUE)) {
     $variables['display_submitted'] = TRUE;
+    $variables['submitted'] = t('Submitted by !username on !datetime', array('!username' => $variables['name'], '!datetime' => $variables['date']));
     $variables['user_picture'] = theme_get_setting('toggle_node_user_picture') ? theme('user_picture', array('account' => $node)) : '';
   }
   else {
     $variables['display_submitted'] = FALSE;
+    $variables['submitted'] = '';
     $variables['user_picture'] = '';
   }
 

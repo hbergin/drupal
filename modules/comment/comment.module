@@ -1,5 +1,5 @@
 <?php
-// $Id: comment.module,v 1.921 2010/11/30 17:16:37 dries Exp $
+// $Id: comment.module,v 1.924 2010/12/01 00:19:18 webchick Exp $
 
 /**
  * @file
@@ -831,7 +831,8 @@ function comment_get_thread($node, $mode, $comments_per_page) {
     // See comment above. Analysis reveals that this doesn't cost too
     // much. It scales much much better than having the whole comment
     // structure.
-    $query->orderBy('SUBSTRING(c.thread, 1, (LENGTH(c.thread) - 1))', 'ASC');
+    $query->addExpression('SUBSTRING(c.thread, 1, (LENGTH(c.thread) - 1))', 'torder');
+    $query->orderBy('torder', 'ASC');
   }
 
   $query->setCountQuery($count_query);
@@ -1442,6 +1443,11 @@ function comment_save($comment) {
       $comment->node_type = 'comment_node_' . $node->type;
     }
 
+    // Load the stored entity, if any.
+    if (!empty($comment->cid) && !isset($comment->original)) {
+      $comment->original = entity_load_unchanged('comment', $comment->cid);
+    }
+
     field_attach_presave('comment', $comment);
 
     // Allow modules to alter the comment before saving.
@@ -1568,6 +1574,7 @@ function comment_save($comment) {
     if ($comment->status == COMMENT_PUBLISHED) {
       module_invoke_all('comment_publish', $comment);
     }
+    unset($comment->original);
   }
   catch (Exception $e) {
     $transaction->rollback('comment');
@@ -2252,6 +2259,7 @@ function template_preprocess_comment(&$variables) {
 
   $variables['title']     = l($comment->subject, $uri['path'], $uri['options']);
   $variables['permalink'] = l(t('Permalink'), $uri['path'], $uri['options']);
+  $variables['submitted'] = t('Submitted by !username on !datetime', array('!username' => $variables['author'], '!datetime' => $variables['created']));
 
   // Preprocess fields.
   field_attach_preprocess('comment', $comment, $variables['elements'], $variables);
